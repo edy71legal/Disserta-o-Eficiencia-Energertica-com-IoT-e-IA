@@ -1,0 +1,6 @@
+ngrok.set_auth_token("3E6FIuJGibkJKDB6xQoe9mEXqRW_6sfmiqdyYkc8xfB36qBnk")
+
+
+
+URL PÚBLICA DA API (Utiliza esta no teu Front-end):
+NgrokTunnel: "https://giggling-dormitory-tusk.ngrok-free.dev" -> "http://localhost:5000"
