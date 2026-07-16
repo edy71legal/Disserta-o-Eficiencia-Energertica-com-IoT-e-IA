@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Analytics Pro - Eficiência Energética</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --bg-principal: #0f172a; /* Slate 900 */
+            --bg-card: #1e293b;      /* Slate 800 */
+            --texto-p: #f8fafc;     /* Slate 50 */
+            --texto-s: #94a3b8;     /* Slate 400 */
+            --borda: #334155;        /* Slate 700 */
+            
+            /* Cores Neon dos Indicadores */
+            --neon-azul: #38bdf8;
+            --neon-roxo: #c084fc;
+            --neon-laranja: #fb923c;
+            --neon-verde: #4ade80;
+            --neon-esmeralda: #10b981;
+            --neon-vermelho: #f87171;
+            --neon-amarelo: #facc15;
+        }
+
+        body {
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            background-color: var(--bg-principal);
+            color: var(--texto-p);
+            margin: 0;
+            padding: 25px;
+        }
+
+        .container {
+            max-width: 1440px;
+            margin: 0 auto;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--borda);
+            padding-bottom: 20px;
+            margin-bottom: 25px;
+        }
+        header h1 { margin: 0; font-size: 24px; font-weight: 600; letter-spacing: -0.5px; }
+        header p { margin: 5px 0 0 0; font-size: 14px; color: var(--texto-s); }
+
+        .status-badge {
+            background: #111827;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            border: 1px solid var(--borda);
+        }
+
+        .section-title {
+            font-size: 13px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--texto-s);
+            margin-bottom: 15px;
+            font-weight: 700;
+        }
+
+        /* Grid de Cartões Superiores Ajustado para 5 Cards */
+        .cards-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .card {
+            background-color: var(--bg-card);
+            border: 1px solid var(--borda);
+            border-radius: 12px;
+            padding: 15px 20px 5px 20px;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            height: 140px;
+        }
+        .card-info h3 { margin: 0 0 5px 0; font-size: 13px; color: var(--texto-s); font-weight: 500; }
+        .card-info .valor { font-size: 28px; font-weight: 700; color: var(--texto-p); white-space: nowrap; }
+        .card-info .unidade { font-size: 14px; color: var(--texto-s); font-weight: 400; margin-left: 4px; }
+
+        .sparkline-container {
+            width: 100%;
+            height: 50px;
+            margin-top: 10px;
+        }
+
+        /* Estrutura Central */
+        .main-layout {
+            display: grid;
+            grid-template-columns: 2.2fr 1fr;
+            gap: 25px;
+            margin-bottom: 30px;
+        }
+
+        .chart-container {
+            background-color: var(--bg-card);
+            border: 1px solid var(--borda);
+            border-radius: 12px;
+            padding: 25px;
+        }
+        .chart-container h2 { margin: 0 0 20px 0; font-size: 16px; font-weight: 600; color: var(--texto-p); }
+
+        .ai-sidebar {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .card-ai {
+            background-color: var(--bg-card);
+            border: 1px solid var(--borda);
+            border-radius: 12px;
+            padding: 18px 20px;
+        }
+        .card-ai h4 { margin: 0 0 8px 0; font-size: 12px; color: var(--texto-s); text-transform: uppercase; letter-spacing: 0.5px; }
+        .card-ai .valor-ai { font-size: 24px; font-weight: 700; }
+
+        .box-anomalia {
+            padding: 12px;
+            border-radius: 8px;
+            font-weight: 700;
+            font-size: 15px;
+            text-align: center;
+            margin-top: 5px;
+        }
+        .anomalia-ok { background: rgba(74, 222, 128, 0.1); color: var(--neon-verde); border: 1px solid rgba(74, 222, 128, 0.2); }
+        .anomalia-critica { background: rgba(248, 113, 113, 0.1); color: var(--neon-vermelho); border: 1px solid rgba(248, 113, 113, 0.2); animation: pulso 1.5s infinite; }
+
+        @keyframes pulso { 0% { opacity: 1; } 50% { opacity: 0.6; } 100% { opacity: 1; } }
+
+        /* Tabela Inferior Estilo Clean Dark */
+        .table-container {
+            background-color: var(--bg-card);
+            border: 1px solid var(--borda);
+            border-radius: 12px;
+            padding: 25px;
+        }
+        .table-container h2 { margin: 0 0 20px 0; font-size: 16px; font-weight: 600; }
+
+        table { width: 100%; border-collapse: collapse; font-size: 14px; text-align: left; }
+        th { color: var(--texto-s); font-weight: 600; padding: 14px; border-bottom: 1px solid var(--borda); background: #111827; }
+        td { padding: 14px; border-bottom: 1px solid var(--borda); color: var(--texto-p); }
+        .timestamp-real { font-family: monospace; color: var(--neon-azul); font-weight: 600; }
+
+        .badge { background: rgba(56, 189, 248, 0.15); color: var(--neon-azul); padding: 4px 8px; border-radius: 6px; font-size: 12px; font-weight: 600; }
+        .badge-local { background: rgba(24a, 204, 21, 0.15); color: var(--neon-amarelo); margin-left: 5px; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <div>
+            <h1>Dashboard de Eficiência Energética</h1>
+            <p>Análise de Grandezas Elétricas em Tempo Real & Previsão Preditiva LSTM</p>
+            <p>Desenvolvido por Edimilson Pereira - Mestrando do programa PROPECAUT - IFES Campus Serra</p>
+        </div>
+        <div class="status-badge">
+            SISTEMA: <span id="status-conexao" style="color: var(--neon-azul)">CONECTANDO...</span>
+        </div>
+    </header>
+
+    <div class="section-title">Monitoramento em Tempo Real (Com Tendências Históricas)</div>
+    
+    <div class="cards-grid">
+        <div class="card">
+            <div class="card-info">
+                <h3>Tensão</h3>
+                <div class="valor" id="v-tensao">0.0<span class="unidade">V</span></div>
+            </div>
+            <div class="sparkline-container">
+                <canvas id="spark-tensao"></canvas>
+            </div>
+        </div>
+        <div class="card">
+            <div class="card-info">
+                <h3>Corrente</h3>
+                <div class="valor" id="v-corrente">0.00<span class="unidade">A</span></div>
+            </div>
+            <div class="sparkline-container">
+                <canvas id="spark-corrente"></canvas>
+            </div>
+        </div>
+        <div class="card">
+            <div class="card-info">
+                <h3>Potência Ativa</h3>
+                <div class="valor" id="v-potencia">0.0<span class="unidade">W</span></div>
+            </div>
+            <div class="sparkline-container">
+                <canvas id="spark-potencia"></canvas>
+            </div>
+        </div>
+        <div class="card">
+            <div class="card-info">
+                <h3>Consumo Atual</h3>
+                <div class="valor" id="v-consumo-atual">0.000<span class="unidade">kWh</span></div>
+            </div>
+            <div class="sparkline-container">
+                <canvas id="spark-consumo-atual"></canvas>
+            </div>
+        </div>
+        <div class="card">
+            <div class="card-info">
+                <h3>Consumo Acumulado</h3>
+                <div class="valor" id="v-consumo-acumulado">0.000<span class="unidade">kWh</span></div>
+            </div>
+            <div class="sparkline-container">
+                <canvas id="spark-consumo-acumulado"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <div class="main-layout">
+        <div class="chart-container">
+            <h2>Tendência de Consumos & Projeções Estendidas</h2>
+            <canvas id="graficoLinha" height="120"></canvas>
+        </div>
+
+        <div class="ai-sidebar">
+            <div class="section-title">Módulos de Inteligência Artificial</div>
+            
+            <div class="card-ai" style="border-left: 4px solid var(--neon-vermelho);">
+                <h4>Previsão Próximo Passo</h4>
+                <div class="valor-ai" id="p-passo1" style="color: var(--neon-vermelho);">0.000 <span style="font-size:14px; color:var(--texto-s);">kWh</span></div>
+            </div>
+
+            <div class="card-ai" style="border-left: 4px solid var(--neon-roxo);">
+                <h4>Previsão (6 Passos à Frente)</h4>
+                <div class="valor-ai" id="p-passo6" style="color: var(--neon-roxo);">0.000 <span style="font-size:14px; color:var(--texto-s);">kWh</span></div>
+            </div>
+
+            <div class="card-ai" style="border-left: 4px solid var(--neon-amarelo);">
+                <h4>Previsão Próximas 24 Horas</h4>
+                <div class="valor-ai" id="p-24h" style="color: var(--neon-amarelo);">0.00 <span style="font-size:14px; color:var(--texto-s);">kWh</span></div>
+            </div>
+
+            <div class="card-ai" style="border-left: 4px solid var(--neon-verde);" id="borda-anomalia">
+                <h4>Anomalias Detectadas</h4>
+                <div class="box-anomalia anomalia-ok" id="p-anomalia">SISTEMA ESTÁVEL</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="table-container">
+        <h2>Acompanhamento Analítico de Validação do Modelo</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Data/Hora do Registro (Firebase)</th>
+                    <th>Valor Previsto (kWh)</th>
+                    <th>Passo</th>
+                    <th>Consumo Real (kWh)</th>
+                    <th>Erro Residual (kWh)</th>
+                    <th>Erro Absoluto</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody id="corpo-tabela">
+                </tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+    const URL_API = "https://giggling-dormitory-tusk.ngrok-free.dev";
+    const TOTAL_PASSOS = 6;
+    const MAX_HISTORICO_CARDS = 10; 
+
+    function criarSparkline(idCanvas, corHex) {
+        const ctxSpark = document.getElementById(idCanvas).getContext('2d');
+        const grad = ctxSpark.createLinearGradient(0, 0, 0, 45);
+        grad.addColorStop(0, corHex + '33'); 
+        grad.addColorStop(1, corHex + '00'); 
+
+        return new Chart(ctxSpark, {
+            type: 'line',
+            data: {
+                labels: Array(MAX_HISTORICO_CARDS).fill(''),
+                datasets: [{
+                    data: Array(MAX_HISTORICO_CARDS).fill(null),
+                    borderColor: corHex,
+                    backgroundColor: grad,
+                    borderWidth: 1.5,
+                    fill: true,
+                    tension: 0.4,
+                    pointRadius: 0 
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: { x: { display: false }, y: { display: false } },
+                plugins: { legend: { display: false }, tooltip: { enabled: false } }
+            }
+        });
+    }
+
+    const sparkTensao = criarSparkline('spark-tensao', '#38bdf8');
+    const sparkCorrente = criarSparkline('spark-corrente', '#c084fc');
+    const sparkPotencia = criarSparkline('spark-potencia', '#fb923c');
+    const sparkConsumoAtual = criarSparkline('spark-consumo-atual', '#4ade80');
+    const sparkConsumoAcumulado = criarSparkline('spark-consumo-acumulado', '#10b981');
+
+    function atualizarVetorSparkline(chartObj, novoValor) {
+        let dadosAtuais = chartObj.data.datasets[0].data;
+        dadosAtuais.push(novoValor);
+        if (dadosAtuais.length > MAX_HISTORICO_CARDS) {
+            dadosAtuais.shift(); 
+        }
+        chartObj.update();
+    }
+
+    const ctx = document.getElementById('graficoLinha').getContext('2d');
+    const gradienteCentral = ctx.createLinearGradient(0, 0, 0, 300);
+    gradienteCentral.addColorStop(0, 'rgba(56, 189, 248, 0.25)');
+    gradienteCentral.addColorStop(1, 'rgba(56, 189, 248, 0.0)');
+
+    const graficoLinha = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: [],
+            datasets: [{
+                label: 'Carga Projetada (kWh)',
+                data: [],
+                borderColor: '#38bdf8',
+                backgroundColor: gradienteCentral,
+                borderWidth: 2,
+                fill: true,
+                tension: 0.3,
+                pointBackgroundColor: '#38bdf8'
+            }]
+        },
+        options: {
+            responsive: true,
+            scales: {
+                x: { grid: { color: '#334155' }, ticks: { color: '#94a3b8' } },
+                y: { grid: { color: '#334155' }, ticks: { color: '#94a3b8' } }
+            },
+            plugins: { legend: { display: false } }
+        }
+    });
+
+    let dadosTabelaMemoria = [];
+
+    function processarAnomalias(t, c) {
+        const box = document.getElementById('p-anomalia');
+        const card = document.getElementById('borda-anomalia');
+        let msg = "";
+        if (t > 135) msg = "SOBRETENSÃO";
+        else if (t < 105 && t > 0) msg = "SUBTENSÃO";
+        else if (c > 15) msg = "SOBRECARGA CRÍTICA";
+
+        if(msg !== "") {
+            box.innerText = msg;
+            box.className = "box-anomalia anomalia-critica";
+            card.style.borderLeftColor = "var(--neon-vermelho)";
+        } else {
+            box.innerText = "SISTEMA ESTÁVEL";
+            box.className = "box-anomalia anomalia-ok";
+            card.style.borderLeftColor = "var(--neon-verde)";
+        }
+    }
+
+    // Injeta de forma clara se o registro de data provém do Firebase ou Local
+    function gerenciarTabela(real, previsto, timestampFirebase) {
+        const tbody = document.getElementById('corpo-tabela');
+        const erro = real - previsto;
+        const erroAbs = Math.abs(erro);
+        
+        let dataExibicao = "";
+        let ehLocal = false;
+
+        // Validação transparente do timestamp vindo do Firebase
+        if (timestampFirebase) {
+            dataExibicao = timestampFirebase;
+        } else {
+            const agora = new Date();
+            dataExibicao = agora.toLocaleDateString('pt-BR') + ' - ' + agora.toLocaleTimeString('pt-BR');
+            ehLocal = true;
+        }
+
+        if (dadosTabelaMemoria.length > 0 && dadosTabelaMemoria[0].dataReal === dataExibicao) {
+            return; 
+        }
+
+        dadosTabelaMemoria.unshift({ dataReal: dataExibicao, previsto, real, erro, erroAbs, ehLocal });
+        if(dadosTabelaMemoria.length > 5) dadosTabelaMemoria.pop();
+
+        tbody.innerHTML = "";
+        dadosTabelaMemoria.forEach(d => {
+            const tr = document.createElement('tr');
+            const corErro = d.erroAbs > 0.03 ? 'color: var(--neon-vermelho); font-weight:600;' : 'color: var(--neon-verde);';
+            const badgeOrigem = d.ehLocal ? '<span class="badge badge-local">Local</span>' : '';
+
+            tr.innerHTML = `
+                <td class="timestamp-real">${d.dataReal}${badgeOrigem}</td>
+                <td>${d.previsto.toFixed(4)}</td>
+                <td><span style="font-weight:600; color:var(--neon-azul);">+1</span></td>
+                <td>${d.real.toFixed(4)}</td>
+                <td style="${corErro}">${d.erro >= 0 ? '+' : ''}${d.erro.toFixed(4)}</td>
+                <td style="${corErro}">${d.erroAbs.toFixed(4)}</td>
+                <td><span class="badge">Comparado</span></td>
+            `;
+            tbody.appendChild(tr);
+        });
+    }
+
+    async function atualizarDashboard() {
+        try {
+            const resStatus = await fetch(`${URL_API}/api/status_atual`, {
+                headers: { "ngrok-skip-browser-warning": "true" }
+            });
+            const dadosStatus = await resStatus.json();
+
+            if(dadosStatus.leitura_atual) {
+                document.getElementById('status-conexao').innerText = "ONLINE";
+                document.getElementById('status-conexao').style.color = "var(--neon-verde)";
+
+                const t = dadosStatus.leitura_atual.voltagem;
+                const c = dadosStatus.leitura_atual.corrente;
+                const p = dadosStatus.leitura_atual.potencia;
+                
+                const consumoAtual = dadosStatus.leitura_atual.consumo || 0.0;
+                const consumoAcumulado = dadosStatus.leitura_atual.consumo_acumulado || dadosStatus.leitura_atual.consumo_total_pzem || consumoAtual;
+                const pr1 = dadosStatus.previsao_proximo_passo || 0.0;
+
+                // Mapeamento dinâmico das propriedades de tempo comuns do Firebase
+                const tempoFirebase = dadosStatus.leitura_atual.timestamp || 
+                                      dadosStatus.leitura_atual.datetime || 
+                                      dadosStatus.leitura_atual.data_hora || 
+                                      dadosStatus.leitura_atual.horario;
+
+                document.getElementById('v-tensao').innerHTML = `${t.toFixed(1)}<span class="unidade">V</span>`;
+                document.getElementById('v-corrente').innerHTML = `${c.toFixed(2)}<span class="unidade">A</span>`;
+                document.getElementById('v-potencia').innerHTML = `${p.toFixed(1)}<span class="unidade">W</span>`;
+                document.getElementById('v-consumo-atual').innerHTML = `${consumoAtual.toFixed(3)}<span class="unidade">kWh</span>`;
+                document.getElementById('v-consumo-acumulado').innerHTML = `${consumoAcumulado.toFixed(3)}<span class="unidade">kWh</span>`;
+                
+                document.getElementById('p-passo1').innerHTML = `${pr1.toFixed(3)} <span style="font-size:13px; font-weight:400; color:var(--texto-s);">kWh</span>`;
+
+                atualizarVetorSparkline(sparkTensao, t);
+                atualizarVetorSparkline(sparkCorrente, c);
+                atualizarVetorSparkline(sparkPotencia, p);
+                atualizarVetorSparkline(sparkConsumoAtual, consumoAtual);
+                atualizarVetorSparkline(sparkConsumoAcumulado, consumoAcumulado);
+
+                processarAnomalias(t, c);
+                gerenciarTabela(consumoAtual, pr1, tempoFirebase);
+            }
+
+            const resPrev = await fetch(`${URL_API}/api/previsao_futura?passos=${TOTAL_PASSOS}`, {
+                headers: { "ngrok-skip-browser-warning": "true" }
+            });
+            const dadosPrev = await resPrev.json();
+
+            if(dadosPrev.valores_projetados) {
+                const arrProj = dadosPrev.valores_projetados;
+                const valPasso6 = arrProj[TOTAL_PASSOS - 1];
+
+                document.getElementById('p-passo6').innerHTML = `${valPasso6.toFixed(3)} <span style="font-size:13px; font-weight:400; color:var(--texto-s);">kWh</span>`;
+
+                const est24h = valPasso6 * 24;
+                document.getElementById('p-24h').innerHTML = `${est24h.toFixed(2)} <span style="font-size:13px; font-weight:400; color:var(--texto-s);">kWh</span>`;
+
+                graficoLinha.data.labels = Array.from({length: TOTAL_PASSOS}, (_, i) => `Passo +${i + 1}`);
+                graficoLinha.data.datasets[0].data = arrProj;
+                graficoLinha.update();
+            }
+
+        } catch (e) {
+            console.error("Erro na atualização automática:", e);
+            document.getElementById('status-conexao').innerText = "OFFLINE";
+            document.getElementById('status-conexao').style.color = "var(--neon-vermelho)";
+        }
+    }
+
+    atualizarDashboard();
+    setInterval(atualizarDashboard, 5000);
+</script>
+</body>
+</html>

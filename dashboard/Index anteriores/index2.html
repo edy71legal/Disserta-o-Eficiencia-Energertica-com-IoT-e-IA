@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard de Eficiência Energética Inteligente</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --primary: #2c3e50;
+            --bg: #f4f6f9;
+            --card-bg: #ffffff;
+            --text: #333333;
+            --border: #e2e8f0;
+            --success: #2ecc71;
+            --danger: #e74c3c;
+        }
+
+        body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            background-color: var(--bg); 
+            margin: 0; 
+            padding: 20px; 
+            color: var(--text); 
+        }
+
+        .dashboard { max-width: 1300px; margin: 0 auto; }
+
+        header { 
+            background: var(--primary); 
+            color: white; 
+            padding: 15px 25px; 
+            border-radius: 8px; 
+            margin-bottom: 20px; 
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        header h1 { margin: 0; font-size: 22px; }
+        header p { margin: 5px 0 0 0; font-size: 14px; opacity: 0.8; }
+
+        /* Grid de Cards Superiores em Tempo Real */
+        .realtime-grid { 
+            display: grid; 
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); 
+            gap: 15px; 
+            margin-bottom: 20px; 
+        }
+
+        .card-rt { 
+            background: var(--card-bg); 
+            padding: 15px 20px; 
+            border-radius: 8px; 
+            box-shadow: 0 2px 4px rgba(0,0,0,0.04); 
+            border-left: 5px solid var(--primary);
+        }
+        .card-rt h3 { margin: 0 0 5px 0; font-size: 13px; text-transform: uppercase; color: #7f8c8d; }
+        .card-rt .valor { font-size: 26px; font-weight: bold; color: var(--primary); }
+        .card-rt .unidade { font-size: 14px; font-weight: normal; color: #95a5a6; }
+
+        /* Estrutura Central Baseada na Imagem */
+        .main-content { 
+            display: grid; 
+            grid-template-columns: 2.5fr 1fr; 
+            gap: 20px; 
+            margin-bottom: 20px; 
+        }
+
+        .chart-box { 
+            background: var(--card-bg); 
+            padding: 20px; 
+            border-radius: 8px; 
+            box-shadow: 0 2px 4px rgba(0,0,0,0.04);
+        }
+        .chart-box h2 { margin: 0 0 15px 0; font-size: 16px; color: var(--primary); border-bottom: 1px solid var(--border); padding-bottom: 8px; }
+
+        .side-box { display: flex; flex-direction: column; gap: 15px; }
+
+        .card-ai { 
+            background: var(--card-bg); 
+            padding: 20px; 
+            border-radius: 8px; 
+            box-shadow: 0 2px 4px rgba(0,0,0,0.04);
+            border-top: 4px solid var(--danger);
+            text-align: center;
+        }
+        .card-ai h3 { margin: 0 0 10px 0; font-size: 14px; color: #7f8c8d; text-transform: uppercase; }
+
+        .card-anomalia {
+            background: var(--card-bg); 
+            padding: 20px; 
+            border-radius: 8px; 
+            box-shadow: 0 2px 4px rgba(0,0,0,0.04);
+            border-top: 4px solid var(--success);
+            text-align: center;
+            transition: all 0.3s ease;
+        }
+        .card-anomalia h3 { margin: 0 0 10px 0; font-size: 14px; color: #7f8c8d; text-transform: uppercase; }
+        .status-ok { color: var(--success); font-weight: bold; font-size: 20px; }
+        .status-alert { color: var(--danger); font-weight: bold; font-size: 20px; animation: piscar 1s infinite; }
+
+        @keyframes piscar { 0% { opacity: 1; } 50% { opacity: 0.4; } 100% { opacity: 1; } }
+
+        /* Tabela Inferior Estilo Acadêmico/Dissertação */
+        .table-box { 
+            background: var(--card-bg); 
+            padding: 20px; 
+            border-radius: 8px; 
+            box-shadow: 0 2px 4px rgba(0,0,0,0.04); 
+        }
+        .table-box h2 { margin: 0 0 15px 0; font-size: 16px; color: var(--primary); }
+        
+        .table-wrapper { overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; text-align: left; font-size: 14px; }
+        th { background-color: #f8fafc; color: #64748b; padding: 12px; font-weight: 600; border-bottom: 2px solid var(--border); }
+        td { padding: 12px; border-bottom: 1px solid var(--border); color: #334155; }
+        tr:hover { background-color: #f8fafc; }
+
+        .badge-status { padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: bold; }
+        .badge-comparado { background-color: #e0f2fe; color: #0369a1; }
+        .badge-erro-ok { color: var(--success); font-weight: bold; }
+        .badge-erro-alto { color: var(--danger); font-weight: bold; }
+    </style>
+</head>
+<body>
+
+<div class="dashboard">
+    <header>
+        <div>
+            <h1>Dashboard de Eficiência Energética Inteligente</h1>
+            <p>Fusão de Dados e Modelagem Preditiva LSTM para Consumo</p>
+        </div>
+        <div style="font-size: 13px; text-align: right; opacity: 0.9;">
+            Status API: <span id="api-online" style="color: var(--success); font-weight: bold;">CONECTANDO...</span>
+        </div>
+    </header>
+
+    <div class="realtime-grid">
+        <div class="card-rt" style="border-left-color: #3498db;">
+            <h3>Voltagem</h3>
+            <div class="valor" id="txt-voltagem">0.0 <span class="unidade">V</span></div>
+        </div>
+        <div class="card-rt" style="border-left-color: #9b59b6;">
+            <h3>Corrente</h3>
+            <div class="valor" id="txt-corrente">0.00 <span class="unidade">A</span></div>
+        </div>
+        <div class="card-rt" style="border-left-color: #e67e22;">
+            <h3>Potência Ativa</h3>
+            <div class="valor" id="txt-potencia">0.0 <span class="unidade">W</span></div>
+        </div>
+        <div class="card-rt" style="border-left-color: var(--success);">
+            <h3>Consumo Atual</h3>
+            <div class="valor" id="txt-consumo">0.000 <span class="unidade">kWh</span></div>
+        </div>
+    </div>
+
+    <div class="main-content">
+        <div class="chart-box">
+            <h2>Projeção de Consumo Futuro (Autoregressivo LSTM)</h2>
+            <canvas id="chartConsumo" height="110"></canvas>
+        </div>
+
+        <div class="side-box">
+            <div class="card-ai">
+                <h3>Previsão Próximo Passo</h3>
+                <div class="valor" id="txt-previsto" style="color: var(--danger); font-size: 32px;">0.000</div>
+                <div class="unidade" style="margin-top: 5px;">kWh estimado</div>
+            </div>
+
+            <div class="card-anomalia" id="card-anomalia">
+                <h3>Análise de Anomalias</h3>
+                <div class="status-ok" id="txt-anomalia">SISTEMA OK</div>
+                <div class="unidade" id="txt-anomalia-desc" style="margin-top: 5px; font-size: 12px; color: #95a5a6;">Parâmetros normais</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="table-box">
+        <h2>Tabela de Acompanhamento e Validação de Previsão</h2>
+        <div class="table-wrapper">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Amostra Origem</th>
+                        <th>Valor Previsto (kWh)</th>
+                        <th>Passo</th>
+                        <th>Consumo Real (kWh)</th>
+                        <th>Erro (kWh)</th>
+                        <th>Erro Absoluto (kWh)</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody id="tbody-validacao">
+                    </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Configuração do link da sua API Ngrok
+    const URL_API = "https://giggling-dormitory-tusk.ngrok-free.dev";
+    const QUANTIDADE_PASSOS_PROJECAO = 6; 
+
+    // Inicialização do Gráfico Linear do Chart.js
+    const ctx = document.getElementById('chartConsumo').getContext('2d');
+    const chartConsumo = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: [], 
+            datasets: [{
+                label: 'Consumo Projetado (kWh)',
+                data: [],
+                borderColor: '#e74c3c',
+                backgroundColor: 'rgba(231, 76, 60, 0.06)',
+                borderWidth: 3,
+                fill: true,
+                tension: 0.3
+            }]
+        },
+        options: { 
+            responsive: true,
+            plugins: { legend: { display: true, position: 'bottom' } }
+        }
+    });
+
+    // Vetor para simular e alimentar o histórico da tabela de acompanhamento do seu front original
+    let historicoTabela = [];
+
+    function verificarAnomalia(voltagem, corrente, potencia) {
+        const card = document.getElementById('card-anomalia');
+        const txt = document.getElementById('txt-anomalia');
+        const desc = document.getElementById('txt-anomalia-desc');
+
+        let anomalia = "";
+        if (voltagem > 135.0) anomalia = "SOBRETENSÃO";
+        else if (voltagem < 105.0 && voltagem > 0) anomalia = "SUBTENSÃO";
+        else if (corrente > 15.0) anomalia = "SOBRECARGA";
+
+        if (anomalia !== "") {
+            txt.innerText = anomalia;
+            txt.className = "status-alert";
+            desc.innerText = "Risco detectado na rede elétrica!";
+            card.style.borderTopColor = "var(--danger)";
+        } else {
+            txt.innerText = "SISTEMA OK";
+            txt.className = "status-ok";
+            desc.innerText = "Parâmetros operacionais estáveis";
+            card.style.borderTopColor = "var(--success)";
+        }
+    }
+
+    function atualizarTabelaInterface(consumoReal, consumoPrevisto) {
+        const tbody = document.getElementById('tbody-validacao');
+        
+        // Calcula métricas de erro estatístico solicitadas para a dissertação
+        const erro = consumoReal - consumoPrevisto;
+        const erroAbsoluto = Math.abs(erro);
+        const timestamp = new Date().toLocaleTimeString();
+
+        // Adiciona um registro no topo da fila
+        historicoTabela.unshift({
+            origem: timestamp,
+            previsto: consumoPrevisto,
+            passo: "+1",
+            real: consumoReal,
+            erro: erro,
+            erroAbs: erroAbsoluto
+        });
+
+        // Limita o tamanho da tabela visual em 5 linhas para não estourar a tela
+        if(historicoTabela.length > 5) historicoTabela.pop();
+
+        tbody.innerHTML = "";
+        historicoTabela.forEach(item => {
+            const row = document.createElement('tr');
+            const classeErro = item.erroAbs > 0.05 ? 'badge-erro-alto' : 'badge-erro-ok';
+            
+            row.innerHTML = `
+                <td>${item.origem}</td>
+                <td>${item.previsto.toFixed(4)}</td>
+                <td><span style="font-weight: 600; color: #475569;">${item.passo}</span></td>
+                <td>${item.real.toFixed(4)}</td>
+                <td class="${classeErro}">${item.erro >= 0 ? '+' : ''}${item.erro.toFixed(4)}</td>
+                <td class="${classeErro}">${item.erroAbs.toFixed(4)}</td>
+                <td><span class="badge-status badge-comparado">Comparado</span></td>
+            `;
+            tbody.appendChild(row);
+        });
+    }
+
+    async function consumirDadosApi() {
+        try {
+            // 1. Chamada HTTP para dados instantâneos
+            const respostaStatus = await fetch(`${URL_API}/api/status_atual`, {
+                method: "GET",
+                headers: { "ngrok-skip-browser-warning": "true" }
+            });
+            const dadosStatus = await respostaStatus.json();
+
+            if(dadosStatus.leitura_atual) {
+                document.getElementById('api-online').innerText = "ONLINE";
+                document.getElementById('api-online').style.color = "var(--success)";
+
+                const v = dadosStatus.leitura_atual.voltagem;
+                const c = dadosStatus.leitura_atual.corrente;
+                const p = dadosStatus.leitura_atual.potencia;
+                const con = dadosStatus.leitura_atual.consumo;
+                const pred = dadosStatus.previsao_proximo_passo;
+
+                // Injetar valores elétricos nos cards superiores
+                document.getElementById('txt-voltagem').innerHTML = `${v.toFixed(1)} <span class="unidade">V</span>`;
+                document.getElementById('txt-corrente').innerHTML = `${c.toFixed(2)} <span class="unidade">A</span>`;
+                document.getElementById('txt-potencia').innerHTML = `${p.toFixed(1)} <span class="unidade">W</span>`;
+                document.getElementById('txt-consumo').innerHTML = `${con.toFixed(3)} <span class="unidade">kWh</span>`;
+                
+                // Injetar valor no Card Lateral de IA
+                document.getElementById('txt-previsto').innerText = pred.toFixed(3);
+
+                // Executar lógicas de regras de negócio
+                verificarAnomalia(v, c, p);
+                atualizarTabelaInterface(con, pred);
+            }
+
+            // 2. Chamada HTTP para alimentar as projeções do gráfico linear
+            const respostaPrevisao = await fetch(`${URL_API}/api/previsao_futura?passos=${QUANTIDADE_PASSOS_PROJECAO}`, {
+                method: "GET",
+                headers: { "ngrok-skip-browser-warning": "true" }
+            });
+            const dadosPrevisao = await respostaPrevisao.json();
+
+            if(dadosPrevisao.valores_projetados) {
+                chartConsumo.data.labels = Array.from({length: QUANTIDADE_PASSOS_PROJECAO}, (_, idx) => `Passo +${idx + 1}`);
+                chartConsumo.data.datasets[0].data = dadosPrevisao.valores_projetados;
+                chartConsumo.update();
+            }
+
+        } catch (erro) {
+            console.error("Falha na comunicação com a API:", erro);
+            document.getElementById('api-online').innerText = "OFFLINE";
+            document.getElementById('api-online').style.color = "var(--danger)";
+        }
+    }
+
+    // Loop de execução periódica (5 segundos)
+    consumirDadosApi();
+    setInterval(consumirDadosApi, 5000);
+</script>
+</body>
+</html>

@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Consumo Consciente - Monitoramento e IA</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f0f2f5; margin: 0; padding: 20px; color: #333; }
+        .dashboard { max-width: 1200px; margin: 0 auto; }
+        header { background: #2c3e50; color: white; padding: 20px; border-radius: 8px; margin-bottom: 20px; text-align: center; }
+        
+        /* Grid principal de cartões */
+        .grid-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 20px; margin-bottom: 20px; }
+        .card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); border-top: 5px solid #34495e; }
+        .card h3 { margin: 0 0 10px 0; font-size: 14px; text-transform: uppercase; color: #7f8c8d; }
+        .valor { font-size: 28px; font-weight: bold; color: #2c3e50; }
+        .unidade { font-size: 16px; font-weight: normal; color: #95a5a6; }
+        
+        /* Cores de Destaque */
+        .card.previsao { border-top-color: #e74c3c; }
+        .card.anomalia { border-top-color: #2ecc71; transition: all 0.5s ease; }
+        
+        /* Estados da Detecção de Anomalias */
+        .status-normal { color: #2ecc71; font-weight: bold; }
+        .status-alerta { color: #e74c3c; font-weight: bold; animation: piscar 1s infinite; }
+        
+        @keyframes piscar {
+            0% { opacity: 1; }
+            50% { opacity: 0.4; }
+            100% { opacity: 1; }
+        }
+
+        .chart-container { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
+    </style>
+</head>
+<body>
+
+<div class="dashboard">
+    <header>
+        <h1>Painel de Eficiência Energética Inteligente</h1>
+        <p>Monitoramento Elétrico com Redes Neurais Recorrentes (LSTM)</p>
+    </header>
+
+    <div class="grid-cards">
+        <div class="card">
+            <h3>Voltagem</h3>
+            <div class="valor" id="txt-voltagem">0.0 <span class="unidade">V</span></div>
+        </div>
+        <div class="card">
+            <h3>Corrente</h3>
+            <div class="valor" id="txt-corrente">0.00 <span class="unidade">A</span></div>
+        </div>
+        <div class="card">
+            <h3>Potência</h3>
+            <div class="valor" id="txt-potencia">0.0 <span class="unidade">W</span></div>
+        </div>
+        <div class="card">
+            <h3>Consumo</h3>
+            <div class="valor" id="txt-consumo">0.00 <span class="unidade">kWh</span></div>
+        </div>
+        <div class="card previsao">
+            <h3>Previsão Consumo (IA)</h3>
+            <div class="valor" id="txt-previsto" style="color: #e74c3c;">0.00 <span class="unidade">kWh</span></div>
+        </div>
+        <div class="card anomalia" id="card-anomalia">
+            <h3>Detecção de Anomalias</h3>
+            <div class="valor status-normal" id="txt-anomalia">SISTEMA OK</div>
+        </div>
+    </div>
+
+    <div class="chart-container">
+        <h2>Projeção de Consumo Futuro Dinâmico</h2>
+        <canvas id="chartConsumo" height="120"></canvas>
+    </div>
+</div>
+
+<script>
+    // IMPORTANTE: Insira a URL gerada pelo seu Ngrok aqui sempre que iniciar o Colab
+    const URL_API = "https://giggling-dormitory-tusk.ngrok-free.dev";
+    const QUANTIDADE_PASSOS_PROJECAO = 6; 
+
+    // Inicialização do Gráfico do Chart.js
+    const ctx = document.getElementById('chartConsumo').getContext('2d');
+    const chartConsumo = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: [], 
+            datasets: [{
+                label: 'Consumo Futuro Estimado (kWh)',
+                data: [],
+                borderColor: '#e74c3c',
+                backgroundColor: 'rgba(231, 76, 60, 0.1)',
+                borderWidth: 3,
+                fill: true,
+                tension: 0.3
+            }]
+        },
+        options: { responsive: true }
+    });
+
+    // Função de Regra de Negócio para Detecção de Anomalias Elétricas
+    function verificarAnomalia(voltagem, corrente, potencia) {
+        const card = document.getElementById('card-anomalia');
+        const txt = document.getElementById('txt-anomalia');
+
+        // Define limites de segurança para uma rede de 127V padrão
+        const limiteSobretensao = 135.0; 
+        const limiteSubtensao = 105.0;   
+        const limiteCorrenteCritica = 15.0; // Exemplo: limite de 15 Amperes para o circuito
+
+        let mensagemAnomalia = "";
+
+        if (voltagem > limiteSobretensao) mensagemAnomalia = "SOBRETENSÃO!";
+        else if (voltagem < limiteSubtensao && voltagem > 0) mensagemAnomalia = "SUBTENSÃO!";
+        else if (corrente > limiteCorrenteCritica) mensagemAnomalia = "SOBRECARGA!";
+
+        if (mensagemAnomalia !== "") {
+            // Estado de Anomalia Ativada
+            txt.innerText = mensagemAnomalia;
+            txt.className = "status-alerta";
+            card.style.borderTopColor = "#e74c3c";
+            card.style.backgroundColor = "#fdf2f2";
+        } else {
+            // Estado Normal
+            txt.innerText = "SISTEMA OK";
+            txt.className = "status-normal";
+            card.style.borderTopColor = "#2ecc71";
+            card.style.backgroundColor = "#white";
+        }
+    }
+
+  async function consumirDadosApi() {
+        try {
+            // 1. Coleta dados em tempo real e previsão de 1 passo (Com cabeçalho anti-aviso)
+            const respostaStatus = await fetch(`${URL_API}/api/status_atual`, {
+                method: "GET",
+                headers: {
+                    "ngrok-skip-browser-warning": "true"
+                }
+            });
+            const dadosStatus = await respostaStatus.json();
+
+            if(dadosStatus.leitura_atual) {
+                const v = dadosStatus.leitura_atual.voltagem;
+                const c = dadosStatus.leitura_atual.corrente;
+                const p = dadosStatus.leitura_atual.potencia;
+                const con = dadosStatus.leitura_atual.consumo;
+
+                document.getElementById('txt-voltagem').innerHTML = `${v.toFixed(1)} <span class="unidade">V</span>`;
+                document.getElementById('txt-corrente').innerHTML = `${c.toFixed(2)} <span class="unidade">A</span>`;
+                document.getElementById('txt-potencia').innerHTML = `${p.toFixed(1)} <span class="unidade">W</span>`;
+                document.getElementById('txt-consumo').innerHTML = `${con.toFixed(3)} <span class="unidade">kWh</span>`;
+                document.getElementById('txt-previsto').innerHTML = `${dadosStatus.previsao_proximo_passo.toFixed(3)} <span class="unidade">kWh</span>`;
+
+                // Executa análise de anomalias no lado do cliente
+                verificarAnomalia(v, c, p);
+            }
+
+            // 2. Coleta projeção futura para o gráfico (Com cabeçalho anti-aviso)
+            const respostaPrevisao = await fetch(`${URL_API}/api/previsao_futura?passos=${QUANTIDADE_PASSOS_PROJECAO}`, {
+                method: "GET",
+                headers: {
+                    "ngrok-skip-browser-warning": "true"
+                }
+            });
+            const dadosPrevisao = await respostaPrevisao.json();
+
+            if(dadosPrevisao.valores_projetados) {
+                chartConsumo.data.labels = Array.from({length: QUANTIDADE_PASSOS_PROJECAO}, (_, idx) => `Passo +${idx + 1}`);
+                chartConsumo.data.datasets[0].data = dadosPrevisao.valores_projetados;
+                chartConsumo.update();
+            }
+
+        } catch (erro) {
+            console.error("Falha na comunicação com a API do modelo:", erro);
+        }
+    }
+
+    // Execução inicial e atualização em tempo real a cada 5 segundos
+    consumirDadosApi();
+    setInterval(consumirDadosApi, 5000);
+</script>
+</body>
+</html>
