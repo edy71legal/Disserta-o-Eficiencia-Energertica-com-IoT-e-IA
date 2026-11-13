@@ -7,13 +7,13 @@
 #include <WiFiUdp.h>
 
 // Auxiliares do Firebase
-#include "addons/TokenHelper.h"
-#include "addons/RTDBHelper.h"
+#include "tokendo firebase"
+#include "tokendo firebase.h"
 
 // --- CONFIGURAÇÕES DE CONEXÃO ---
-#define WIFI_SSID "consumo"
-#define WIFI_PASSWORD "26803234"
-#define API_KEY "AIzaSyA563ZWUCqu7RJLBa92TmMQ09eUCrD2SmQ"
+#define WIFI_SSID "nome do wifi"
+#define WIFI_PASSWORD "senha do wifi"
+#define API_KEY "coloque aqui a chave do firebase"
 #define DATABASE_URL "https://consumo-conciente-default-rtdb.firebaseio.com/"
 
 // --- PINOS ---

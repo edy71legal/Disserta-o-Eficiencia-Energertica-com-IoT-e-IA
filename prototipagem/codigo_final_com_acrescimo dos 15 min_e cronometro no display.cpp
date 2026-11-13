@@ -11,10 +11,10 @@
 #include "addons/RTDBHelper.h"
 
 // --- CONFIGURAÇÕES DE CONEXÃO ---
-#define WIFI_SSID "consumo"
-#define WIFI_PASSWORD "26803234"
-#define API_KEY "AIzaSyA563ZWUCqu7RJLBa92TmMQ09eUCrD2SmQ"
-#define DATABASE_URL "https://consumo-conciente-default-rtdb.firebaseio.com/"
+#define WIFI_SSID "nome do wifi"
+#define WIFI_PASSWORD "senha do wifi"
+#define API_KEY "chave KEY DO FIREBASE"
+#define DATABASE_URL "URL DO FIREBASE"
 
 // --- PINOS ---
 #define I2C_SDA 21
