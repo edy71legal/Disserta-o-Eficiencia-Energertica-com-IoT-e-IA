@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Analytics Pro - Eficiência Energética (IFES)</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --bg-principal: #0f172a;
+            --bg-card: #1e293b;
+            --texto-p: #f8fafc;
+            --texto-s: #94a3b8;
+            --borda: #334155;
+            --neon-azul: #38bdf8;
+            --neon-roxo: #c084fc;
+            --neon-laranja: #fb923c;
+            --neon-verde: #4ade80;
+            --neon-esmeralda: #10b981;
+            --neon-vermelho: #f87171;
+            --neon-amarelo: #facc15;
+        }
+        body { font-family: 'Inter', system-ui, -apple-system, sans-serif; background-color: var(--bg-principal); color: var(--texto-p); margin: 0; padding: 20px; }
+        .container { max-width: 1400px; margin: 0 auto; }
+        header { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 15px; border-bottom: 1px solid var(--borda); padding-bottom: 20px; margin-bottom: 25px; }
+        h1 { font-size: 24px; font-weight: 700; margin: 0; background: linear-gradient(to right, #fff, var(--texto-s)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .barra-api { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+        .input-ngrok { background: #0f172a; border: 1px solid var(--borda); color: var(--texto-p); padding: 8px 12px; border-radius: 8px; width: 310px; font-size: 13px; }
+        .btn-conectar { background: var(--neon-azul); color: #0f172a; border: none; padding: 8px 14px; border-radius: 8px; font-weight: 700; cursor: pointer; font-size: 13px; transition: opacity 0.2s; }
+        .btn-conectar:hover { opacity: 0.85; }
+        .status-badge { background-color: #1e293b; border: 1px solid var(--borda); padding: 8px 14px; border-radius: 20px; font-size: 12px; font-weight: 600; display: flex; align-items: center; gap: 8px; }
+        .status-dot { width: 8px; height: 8px; background-color: var(--neon-amarelo); border-radius: 50%; box-shadow: 0 0 10px var(--neon-amarelo); }
+        .secao-titulo { font-size: 15px; font-weight: 700; color: var(--neon-azul); text-transform: uppercase; letter-spacing: 0.05em; margin: 25px 0 15px 0; }
+        .grid-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 20px; margin-bottom: 20px; }
+        .card { background-color: var(--bg-card); border: 1px solid var(--borda); border-radius: 12px; padding: 20px; position: relative; overflow: hidden; display: flex; flex-direction: column; justify-content: space-between; }
+        .card::before { content: ''; position: absolute; top: 0; left: 0; width: 4px; height: 100%; }
+        .card-consumo::before { background-color: var(--neon-azul); }
+        .card-corrente::before { background-color: var(--neon-roxo); }
+        .card-potencia::before { background-color: var(--neon-laranja); }
+        .card-voltagem::before { background-color: var(--neon-verde); }
+        .card-passo1::before { background-color: var(--neon-esmeralda); }
+        .card-passo6::before { background-color: var(--neon-amarelo); }
+        .card-24h::before, .card-anomalias::before { background-color: var(--neon-vermelho); }
+        .card-titulo { font-size: 12px; font-weight: 600; color: var(--texto-s); text-transform: uppercase; margin-bottom: 8px; }
+        .card-valor { font-size: 25px; font-weight: 700; }
+        .card-sub { font-size: 12px; color: var(--texto-s); margin-top: 6px; }
+        .card-sparkline { width: 100%; height: 45px; margin-top: 10px; }
+        .grid-conteudo { display: grid; grid-template-columns: 2fr 1fr; gap: 20px; margin-bottom: 25px; }
+        @media (max-width: 1024px) { .grid-conteudo { grid-template-columns: 1fr; } }
+        .painel { background-color: var(--bg-card); border: 1px solid var(--borda); border-radius: 12px; padding: 20px; margin-bottom: 20px; }
+        .painel-titulo { font-size: 16px; font-weight: 600; margin-top: 0; margin-bottom: 18px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; }
+        .container-tabela { max-height: 350px; overflow-y: auto; }
+        table { width: 100%; border-collapse: collapse; font-size: 13px; }
+        th { position: sticky; top: 0; background-color: #1e293b; color: var(--texto-s); text-align: left; padding: 10px; border-bottom: 2px solid var(--borda); }
+        td { padding: 10px; border-bottom: 1px solid var(--borda); color: #e2e8f0; }
+        .badge-alerta { background-color: rgba(248, 113, 113, 0.15); color: var(--neon-vermelho); padding: 3px 8px; border-radius: 4px; font-weight: 600; }
+        .badge-normal { background-color: rgba(74, 222, 128, 0.15); color: var(--neon-verde); padding: 3px 8px; border-radius: 4px; font-weight: 600; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <header>
+        <div>
+            <h1>Dashboard de Eficiência Energética</h1>
+            <p style="margin: 4px 0; color: #cbd5e1; font-size: 14px;">Monitoramento IoT (Firebase) & Previsão Preditiva (LSTM Multivariado vs. ARIMA)</p>
+            <div style="color: var(--texto-s); font-size: 12px;">Edimilson Pereira — PROPECAUT — IFES Campus Vitória</div>
+        </div>
+        <div class="barra-api">
+            <input type="text" id="input-url-api" class="input-ngrok" placeholder="Cole a URL do Ngrok ou Localtunnel (sem barra final)">
+            <button class="btn-conectar" onclick="salvarEConectar()">Conectar API</button>
+            <div class="status-badge">
+                <div class="status-dot" id="dot-conexao"></div>
+                <span id="status-conexao">CONECTANDO...</span>
+            </div>
+        </div>
+    </header>
+
+    <div class="secao-titulo">1. Telemetria em Tempo Real (ESP32 + PZEM-004T via Firebase)</div>
+    <div class="grid-cards">
+        <div class="card card-consumo">
+            <div class="card-info"><div class="card-titulo">Consumo Total Acumulado</div><div class="card-valor" id="p-consumo">--- <span style="font-size:14px; color:var(--texto-s);">kWh</span></div></div>
+            <div class="card-sparkline"><canvas id="spark-consumo"></canvas></div>
+        </div>
+        <div class="card card-corrente">
+            <div class="card-info"><div class="card-titulo">Corrente Elétrica</div><div class="card-valor" id="p-corrente">--- <span style="font-size:14px; color:var(--texto-s);">A</span></div></div>
+            <div class="card-sparkline"><canvas id="spark-corrente"></canvas></div>
+        </div>
+        <div class="card card-potencia">
+            <div class="card-info"><div class="card-titulo">Potência Ativa</div><div class="card-valor" id="p-potencia">--- <span style="font-size:14px; color:var(--texto-s);">W</span></div></div>
+            <div class="card-sparkline"><canvas id="spark-potencia"></canvas></div>
+        </div>
+        <div class="card card-voltagem">
+            <div class="card-info"><div class="card-titulo">Tensão da Rede</div><div class="card-valor" id="p-voltagem">--- <span style="font-size:14px; color:var(--texto-s);">V</span></div></div>
+            <div class="card-sparkline"><canvas id="spark-voltagem"></canvas></div>
+        </div>
+    </div>
+
+    <div class="grid-cards">
+        <div class="card card-passo1">
+            <div class="card-titulo">Previsão Próximo Passo (+1)</div>
+            <div class="card-valor" id="p-passo1" style="color: var(--neon-esmeralda);">--- <span style="font-size:14px; color:var(--texto-s);">kWh</span></div>
+            <div class="card-sub" id="sub-delta">Delta previsto: --- kWh</div>
+        </div>
+        <div class="card card-passo6">
+            <div class="card-titulo">Projeção Futura (Passo +6)</div>
+            <div class="card-valor" id="p-passo6" style="color: var(--neon-amarelo);">--- <span style="font-size:14px; color:var(--texto-s);">kWh</span></div>
+            <div class="card-sub">Horizonte iterativo LSTM</div>
+        </div>
+        <div class="card card-24h">
+            <div class="card-titulo">Estimativa Acumulada (24 Ciclos)</div>
+            <div class="card-valor" id="p-24h" style="color: var(--neon-vermelho);">--- <span style="font-size:14px; color:var(--texto-s);">kWh</span></div>
+            <div class="card-sub">Projeção baseada no passo +6</div>
+        </div>
+        <div class="card card-anomalias">
+            <div class="card-titulo">Desvios / Anomalias (&gt;15%)</div>
+            <div class="card-valor" id="p-anomalias" style="color: var(--neon-vermelho);">0</div>
+            <div class="card-sub">Comparação Real vs. Previsto</div>
+        </div>
+    </div>
+
+    <div class="grid-conteudo">
+        <div class="painel">
+            <div class="painel-titulo">
+                <span>Projeção Multistep Iterativa (LSTM)</span>
+                <span style="font-size: 12px; color: var(--texto-s);">Janela de entrada: 10 amostras × 6 variáveis</span>
+            </div>
+            <div style="height: 320px; position: relative;"><canvas id="canvasGraficoFutura"></canvas></div>
+        </div>
+        <div class="painel">
+            <div class="painel-titulo">Logs em Tempo Real</div>
+            <div class="container-tabela">
+                <table>
+                    <thead><tr><th>Horário</th><th>Real (kWh)</th><th>Previsto (kWh)</th><th>Status</th></tr></thead>
+                    <tbody id="corpo-tabela"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="secao-titulo">2. Desempenho dos Modelos Treinados (Validação Real vs. LSTM vs. ARIMA)</div>
+    <div class="grid-cards">
+        <div class="card card-consumo">
+            <div class="card-titulo">MAE (Erro Absoluto Médio)</div>
+            <div class="card-valor" id="m-mae-lstm" style="color: var(--neon-azul);">---</div>
+            <div class="card-sub" id="m-mae-arima">ARIMA: ---</div>
+        </div>
+        <div class="card card-corrente">
+            <div class="card-titulo">RMSE (Raiz do Erro Quadrático)</div>
+            <div class="card-valor" id="m-rmse-lstm" style="color: var(--neon-roxo);">---</div>
+            <div class="card-sub" id="m-rmse-arima">ARIMA: ---</div>
+        </div>
+        <div class="card card-potencia">
+            <div class="card-titulo">MAPE (Erro Percentual Médio)</div>
+            <div class="card-valor" id="m-mape-lstm" style="color: var(--neon-laranja);">--- %</div>
+            <div class="card-sub" id="m-mape-arima">ARIMA: --- %</div>
+        </div>
+        <div class="card card-voltagem">
+            <div class="card-titulo">Coeficiente R² (Ajuste)</div>
+            <div class="card-valor" id="m-r2-lstm" style="color: var(--neon-verde);">---</div>
+            <div class="card-sub" id="m-r2-arima">ARIMA: ---</div>
+        </div>
+    </div>
+
+    <div class="painel">
+        <div class="painel-titulo">
+            <span>Comparativo Histórico de Predição de Delta Energia (kWh): Dados Reais vs. LSTM vs. ARIMA</span>
+            <button class="btn-conectar" onclick="carregarHistoricoTreinamento()">Atualizar Validação</button>
+        </div>
+        <div style="height: 360px; position: relative;"><canvas id="canvasComparativo"></canvas></div>
+    </div>
+
+    <div class="painel" id="painel-loss" style="display: none;">
+        <div class="painel-titulo"><span>Curva de Convergência do Treinamento LSTM (Loss vs. Validation Loss)</span></div>
+        <div style="height: 280px; position: relative;"><canvas id="canvasLoss"></canvas></div>
+    </div>
+</div>
+
+<script>
+    let URL_API = localStorage.getItem("url_ngrok_energia") || "";
+    document.getElementById("input-url-api").value = URL_API;
+    const TOTAL_PASSOS = 6;
+    let totalAnomalias = 0;
+
+    function salvarEConectar() {
+        let novaUrl = document.getElementById("input-url-api").value.trim().replace(/\/+$/, "");
+        URL_API = novaUrl;
+        localStorage.setItem("url_ngrok_energia", URL_API);
+        if(!URL_API) {
+            alert("Por favor, insira uma URL válida da API.");
+            return;
+        }
+        atualizarDadosTempoReal();
+        carregarHistoricoTreinamento();
+    }
+
+    const opcoesSparkline = {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: { x: { display: false }, y: { display: false } },
+        elements: { point: { radius: 0 }, line: { borderWidth: 2, tension: 0.4 } }
+    };
+
+    const sparkConsumo = new Chart(document.getElementById('spark-consumo'), { type: 'line', data: { labels: [], datasets: [{ data: [], borderColor: '#38bdf8', fill: true, backgroundColor: 'rgba(56,189,248,0.1)' }] }, options: opcoesSparkline });
+    const sparkCorrente = new Chart(document.getElementById('spark-corrente'), { type: 'line', data: { labels: [], datasets: [{ data: [], borderColor: '#c084fc', fill: true, backgroundColor: 'rgba(192,132,252,0.1)' }] }, options: opcoesSparkline });
+    const sparkPotencia = new Chart(document.getElementById('spark-potencia'), { type: 'line', data: { labels: [], datasets: [{ data: [], borderColor: '#fb923c', fill: true, backgroundColor: 'rgba(251,146,60,0.1)' }] }, options: opcoesSparkline });
+    const sparkVoltagem = new Chart(document.getElementById('spark-voltagem'), { type: 'line', data: { labels: [], datasets: [{ data: [], borderColor: '#4ade80', fill: true, backgroundColor: 'rgba(74,222,128,0.1)' }] }, options: opcoesSparkline });
+
+    const graficoFutura = new Chart(document.getElementById('canvasGraficoFutura'), {
+        type: 'line',
+        data: { labels: [], datasets: [{ label: 'Consumo Acumulado Projetado - LSTM (kWh)', data: [], borderColor: '#facc15', backgroundColor: 'rgba(250, 204, 21, 0.08)', borderWidth: 3, fill: true, tension: 0.3 }] },
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { color: '#94a3b8' } } }, scales: { x: { grid: { color: '#334155' }, ticks: { color: '#94a3b8' } }, y: { grid: { color: '#334155' }, ticks: { color: '#94a3b8' } } } }
+    });
+
+    const graficoComparativo = new Chart(document.getElementById('canvasComparativo'), {
+        type: 'line',
+        data: {
+            labels: [],
+            datasets: [
+                { label: 'Consumo Real (Firebase)', data: [], borderColor: '#4ade80', backgroundColor: 'rgba(74, 222, 128, 0.1)', borderWidth: 2.5, tension: 0.25 },
+                { label: 'Predição LSTM Multivariado', data: [], borderColor: '#38bdf8', borderWidth: 2.5, tension: 0.25 },
+                { label: 'Predição ARIMA (Baseline)', data: [], borderColor: '#fb923c', borderDash: [6, 6], borderWidth: 2, tension: 0.25 }
+            ]
+        },
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { color: '#f8fafc' } } }, scales: { x: { grid: { color: '#334155' }, ticks: { color: '#94a3b8' } }, y: { grid: { color: '#334155' }, ticks: { color: '#94a3b8' } } } }
+    });
+
+    const graficoLoss = new Chart(document.getElementById('canvasLoss'), {
+        type: 'line',
+        data: {
+            labels: [],
+            datasets: [
+                { label: 'Loss (Treino MSE)', data: [], borderColor: '#38bdf8', borderWidth: 2, tension: 0.2 },
+                { label: 'Validation Loss (Teste MSE)', data: [], borderColor: '#f87171', borderWidth: 2, tension: 0.2 }
+            ]
+        },
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { color: '#f8fafc' } } }, scales: { x: { grid: { color: '#334155' }, ticks: { color: '#94a3b8' } }, y: { grid: { color: '#334155' }, ticks: { color: '#94a3b8' } } } }
+    });
+
+    function atualizarSparkline(chart, valor) {
+        chart.data.labels.push('');
+        chart.data.datasets[0].data.push(valor);
+        if (chart.data.datasets[0].data.length > 15) { chart.data.labels.shift(); chart.data.datasets[0].data.shift(); }
+        chart.update();
+    }
+
+    function gerenciarTabela(real, previsto, horario) {
+        const tbody = document.getElementById('corpo-tabela');
+        if (tbody.children.length >= 8) tbody.removeChild(tbody.lastChild);
+        const tr = document.createElement('tr');
+        const dif = Math.abs(real - previsto) / (previsto || 1);
+        let statusHTML = `<span class="badge-normal">Normal</span>`;
+        if (dif > 0.15) {
+            statusHTML = `<span class="badge-alerta">Anomalia (&gt;15%)</span>`;
+            totalAnomalias++;
+            document.getElementById('p-anomalias').innerText = totalAnomalias;
+        }
+        tr.innerHTML = `<td>${horario}</td><td>${real.toFixed(4)}</td><td>${previsto.toFixed(4)}</td><td>${statusHTML}</td>`;
+        tbody.insertBefore(tr, tbody.firstChild);
+    }
+
+    async function atualizarDadosTempoReal() {
+        if (!URL_API) return;
+        try {
+            const headers = { "ngrok-skip-browser-warning": "true", "Bypass-Tunnel-Reminder": "true" };
+            const resStatus = await fetch(`${URL_API}/api/status_atual`, { headers });
+            if (!resStatus.ok) throw new Error(`HTTP ${resStatus.status}`);
+            const dados = await resStatus.json();
+
+            if (dados.status === 'sucesso') {
+                document.getElementById('status-conexao').innerText = "ONLINE (API ATIVA)";
+                document.getElementById('dot-conexao').style.backgroundColor = "var(--neon-verde)";
+                document.getElementById('dot-conexao').style.boxShadow = "0 0 10px var(--neon-verde)";
+
+                const l = dados.leitura_atual;
+                const consumo = l.consumo_total_pzem || 0;
+                const c = l.corrente || 0;
+                const p = l.potencia || 0;
+                const t = l.voltagem || 0;
+                const pr1 = dados.previsao_proximo_passo || 0;
+                const delta = dados.delta_previsto || 0;
+                const hora = new Date().toLocaleTimeString('pt-BR');
+
+                document.getElementById('p-consumo').innerHTML = `${consumo.toFixed(3)} <span style="font-size:14px; color:var(--texto-s);">kWh</span>`;
+                document.getElementById('p-corrente').innerHTML = `${c.toFixed(3)} <span style="font-size:14px; color:var(--texto-s);">A</span>`;
+                document.getElementById('p-potencia').innerHTML = `${p.toFixed(1)} <span style="font-size:14px; color:var(--texto-s);">W</span>`;
+                document.getElementById('p-voltagem').innerHTML = `${t.toFixed(1)} <span style="font-size:14px; color:var(--texto-s);">V</span>`;
+                document.getElementById('p-passo1').innerHTML = `${pr1.toFixed(3)} <span style="font-size:14px; color:var(--texto-s);">kWh</span>`;
+                document.getElementById('sub-delta').innerText = `Delta previsto: +${delta.toFixed(5)} kWh`;
+
+                atualizarSparkline(sparkConsumo, consumo);
+                atualizarSparkline(sparkCorrente, c);
+                atualizarSparkline(sparkPotencia, p);
+                atualizarSparkline(sparkVoltagem, t);
+                gerenciarTabela(consumo, pr1, hora);
+            }
+
+            const resPrev = await fetch(`${URL_API}/api/previsao_futura?passos=${TOTAL_PASSOS}`, { headers });
+            if (!resPrev.ok) throw new Error(`HTTP ${resPrev.status}`);
+            const dadosPrev = await resPrev.json();
+
+            if (dadosPrev.valores_projetados) {
+                const arrProj = dadosPrev.valores_projetados;
+                const valPasso6 = arrProj[TOTAL_PASSOS - 1];
+                document.getElementById('p-passo6').innerHTML = `${valPasso6.toFixed(3)} <span style="font-size:14px; color:var(--texto-s);">kWh</span>`;
+                document.getElementById('p-24h').innerHTML = `${(valPasso6 * 4).toFixed(2)} <span style="font-size:14px; color:var(--texto-s);">kWh</span>`;
+
+                graficoFutura.data.labels = Array.from({ length: TOTAL_PASSOS }, (_, i) => `Passo +${i + 1}`);
+                graficoFutura.data.datasets[0].data = arrProj;
+                graficoFutura.update();
+            }
+        } catch (erro) {
+            console.error("Erro na comunicação com a API:", erro);
+            document.getElementById('status-conexao').innerText = "ERRO DE CONEXÃO API";
+            document.getElementById('dot-conexao').style.backgroundColor = "var(--neon-vermelho)";
+            document.getElementById('dot-conexao').style.boxShadow = "0 0 10px var(--neon-vermelho)";
+        }
+    }
+
+    async function carregarHistoricoTreinamento() {
+        if (!URL_API) return;
+        try {
+            const headers = { "ngrok-skip-browser-warning": "true", "Bypass-Tunnel-Reminder": "true" };
+            const res = await fetch(`${URL_API}/api/historico_treinamento`, { headers });
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const hist = await res.json();
+
+            if (hist.status === 'sucesso') {
+                graficoComparativo.data.labels = hist.labels;
+                graficoComparativo.data.datasets[0].data = hist.reais;
+                graficoComparativo.data.datasets[1].data = hist.lstm;
+                graficoComparativo.data.datasets[2].data = hist.arima;
+                graficoComparativo.update();
+
+                const mLstm = hist.metricas.lstm;
+                const mArima = hist.metricas.arima;
+
+                document.getElementById('m-mae-lstm').innerText = mLstm.mae;
+                document.getElementById('m-mae-arima').innerText = `ARIMA: ${mArima.mae}`;
+                document.getElementById('m-rmse-lstm').innerText = mLstm.rmse;
+                document.getElementById('m-rmse-arima').innerText = `ARIMA: ${mArima.rmse}`;
+                document.getElementById('m-mape-lstm').innerText = `${mLstm.mape}%`;
+                document.getElementById('m-mape-arima').innerText = `ARIMA: ${mArima.mape}%`;
+                document.getElementById('m-r2-lstm').innerText = mLstm.r2;
+                document.getElementById('m-r2-arima').innerText = `ARIMA: ${mArima.r2}`;
+
+                if (hist.loss && hist.loss.length > 0) {
+                    document.getElementById('painel-loss').style.display = 'block';
+                    graficoLoss.data.labels = hist.loss.map((_, idx) => `Época ${idx + 1}`);
+                    graficoLoss.data.datasets[0].data = hist.loss;
+                    graficoLoss.data.datasets[1].data = hist.val_loss || [];
+                    graficoLoss.update();
+                }
+            }
+        } catch (erro) {
+            console.error("Erro ao carregar histórico de validação:", erro);
+        }
+    }
+
+    if (URL_API) {
+        atualizarDadosTempoReal();
+        carregarHistoricoTreinamento();
+        setInterval(atualizarDadosTempoReal, 5000);
+    } else {
+        document.getElementById('status-conexao').innerText = "INSIRA A URL DA API";
+    }
+</script>
+</body>
+</html>
